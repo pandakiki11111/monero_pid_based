@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
+<properties>
+<comment>properties</comment>   
+    
+    <!--
+        1) java에서 사용하는 법
+            @Value("#{code['code.response.error']}")
+            private String CODE_RESPONSE_ERROR;
+             
+        2) .xml 에서 사용하는 법
+            <property name="driverClassName" value="#{config['key']}">
+         
+        3) jsp에서 사용하는 법
+            <%@ taglib uri="http://www.springframework.org/tags" prefix="spring"%>
+            <spring:eval expression="@config['key']">
+            </spring:eval>
+     -->
+     
+    <!-- URL / PORT -->
+    <entry key="ethereum.ip">http://119.207.78.154</entry>
+    <entry key="ethereum.port">8545</entry>
+    
+     <!-- 
+	    P2P: 18080 for the mainnet, 28080 for the testnet
+		RPC: 18081 for the mainnet, 28081 for the testnet
+     -->
+    <entry key="monero.ip">http://119.207.78.154</entry>
+    <entry key="monero.port">18082</entry>
+    
+    <entry key="monero.daemon.ip">http://119.207.78.154</entry>
+    <entry key="monero.daemon.port">18081</entry>
+
+	<entry key="coinnames">MON:ETC</entry>
+</properties>

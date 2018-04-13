@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/mvc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd
+		http://www.w3.org/2001/XMLSchema-instance http://www.w3.org/2001/XMLSchema-instance.xsd">
+
+	<!-- DispatcherServlet Context: defines this servlet's request-processing infrastructure -->
+	
+	<!-- Enables the Spring MVC @Controller programming model -->
+	<annotation-driven />
+
+	<!-- Handles HTTP GET requests for /resources/** by efficiently serving up static resources in the ${webappRoot}/resources directory -->
+	<resources mapping="/resources/**" location="/resources/" />
+	<resources mapping="/js/**" location= "/WEB-INF/js/"/>
+
+	<!-- Bean View Resolver -->
+	<beans:bean class="org.springframework.web.servlet.view.BeanNameViewResolver">
+		<beans:property name="order" value="0" />
+	</beans:bean>
+	
+	<context:component-scan base-package="com.banco.monero" />
+	
+	<!-- JSP View Resolver -->
+	<beans:bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<beans:property name="prefix">
+			<beans:value>/WEB-INF/views/</beans:value>
+		</beans:property>
+	<beans:property name="suffix">
+			<beans:value>.jsp</beans:value>
+		</beans:property>
+		<beans:property name="order" value="1" />
+	</beans:bean>
+	
+	 <!-- JSON View Resolver -->
+	<beans:bean name="jsonView" class="net.sf.json.spring.web.servlet.view.JsonView" />
+	<context:component-scan base-package="com.banco.monero" />
+	
+	<util:properties id="properties" location="/resources/config/properties.xml"></util:properties>
+	
+	<!-- Service -->
+	<beans:bean id="apiService" class="com.banco.monero.service.APIServiceImpl"/>
+	<beans:bean id="Properties" class="com.banco.monero.properties.Properties"/>
+	<beans:bean id="Util" class="com.banco.monero.util.Util"/>
+	
+	<beans:bean id="task" class="com.banco.monero.job.MoneroTask"/>
+	
+	<beans:bean name="moneroJob" class="org.springframework.scheduling.quartz.JobDetailBean" p:jobClass="com.banco.monero.job.JobDetailBean">
+		<beans:property name="jobDataAsMap">
+            <beans:map>
+                <beans:entry key="task" value-ref="task"/>
+            </beans:map>
+        </beans:property>
+	</beans:bean>
+ 
+    <beans:bean id="cronTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean"
+          p:jobDetail-ref="moneroJob"
+          p:startDelay="1000"
+          p:cronExpression="0/3 * * * * ?"/>
+ 
+    <beans:bean id="schedulerFactoryBean" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <beans:property name="triggers">
+            <beans:list>
+                <beans:ref bean="cronTrigger"/>
+            </beans:list>
+        </beans:property>
+    </beans:bean>
+	
+</beans:beans>
