@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd" >
+<generatorConfiguration>
+  <context id="context1" >
+    <jdbcConnection driverClass="com.microsoft.sqlserver.jdbc.SQLServerDriver" 
+     connectionURL="jdbc:sqlserver://10.??.???.??:1433;DatabaseName=???????"
+     userId="???"
+     password="???" />
+    <javaModelGenerator targetPackage="org.wook.entity.model" targetProject="SpringTest01" />
+    <sqlMapGenerator targetPackage="org.wook.entity.xml" targetProject="SpringTest01" />
+    <javaClientGenerator targetPackage="org.wook.entity.mapper" targetProject="SpringTest01" type="XMLMAPPER" />
+    <table schema="????" tableName="scr" >
+    </table>
+    <table schema="????" tableName="so001" >
+      <!--<columnOverride column="???" property="???" /> -->
+    </table>
+  </context>
+</generatorConfiguration>

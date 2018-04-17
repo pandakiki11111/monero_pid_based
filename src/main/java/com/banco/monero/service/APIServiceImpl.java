@@ -10,22 +10,28 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Service;
 
-import com.banco.monero.properties.Properties;
+import com.banco.monero.dao.APIRepository;
+import com.banco.monero.util.Info;
 import com.banco.monero.util.Util;
 
-@Service("apiService")
+@Service
+@ComponentScan("com.banco.monero")
 public class APIServiceImpl implements APIService{
 
 	private static final Logger logger = LoggerFactory.getLogger(APIServiceImpl.class);
-
-	@Autowired(required=true)
-	Properties info;
 	
-	@Autowired(required=true)
+	@Autowired
+	APIRepository dao;
+	
+	@Autowired
+	Info info;
+	
+	@Autowired
 	Util util;
-	
+
 	@Override
 	public JSONObject apiCall(JSONObject param) {
 		return findMethod(param);
@@ -35,78 +41,73 @@ public class APIServiceImpl implements APIService{
 	 * 신규 address 생성
 	 * 
 	 * @param paramMap
-	 * @param info
 	 * @return
 	 */
-	@SuppressWarnings({ "unused" })
-	private JSONObject mon_getnewaccount(JSONObject param, Properties info){
-		//DB 작업
-		JSONObject jsonParams = new JSONObject();
-		JSONObject data = new JSONObject();
+	private JSONObject mon_getnewaccount(JSONObject param){
+
+		JSONObject result = new JSONObject();
 		
-		data.put("filename", param.has("account") ? param.get("account") : "");
-		data.put("password", param.has("password") ? param.get("password") : "");
-		data.put("language", param.has("language") ? param.get("language") : "English");
+		if(!param.has("account")){
+			result.put("status", "error");
+			result.put("error_message", "account parameter is missing");
+			return result;
+		}
 		
-		jsonParams.put("method", "create_wallet");
-		jsonParams.put("params", data);
+		if(!param.has("password")){
+			result.put("status", "error");
+			result.put("error_message", "password parameter is missing");
+			return result;
+		}
 		
-		return monero_request(jsonParams, info, "rpc");
+		int count = 0;
+		
+		try{
+			count = dao.createAccount(param);
+		}catch(Exception e){
+			result.put("status", "error");
+			result.put("error_message", e.getMessage());
+			
+			e.printStackTrace();
+			
+			return result;
+		}
+		
+		if(count > 0){
+			result.put("status", "success");
+		}else{
+			result.put("status", "error");
+			result.put("error_message", "create new account failed");
+		}
+		
+		return result;
 	}
 
 	/**
 	 * wallet 주소 가져오기
 	 * 
 	 * @param paramMap
-	 * @param info
 	 * @return
 	 */
-	@SuppressWarnings("unused")
-	private JSONObject mon_getwalletaddress(JSONObject param, Properties info) {
+	private JSONObject mon_getwalletaddress(JSONObject param) {
 		
 		JSONObject jsonParams = new JSONObject();
 		
 		jsonParams.put("method", "getaddress");
 		
-		return monero_request(jsonParams, info, "rpc");
+		return monero_request(jsonParams, "rpc");
 	}
 	
 	/**
 	 * 밸런스 값 가져오기
 	 * 
 	 * @param paramMap
-	 * @param info
 	 * @return
 	 * @throws InterruptedException 
 	 */
-	@SuppressWarnings({ "unused" })
-	private JSONObject mon_getbalance(JSONObject param, Properties info) throws InterruptedException {
+	private JSONObject mon_getbalance(JSONObject param){
 		//DB 조회로 변경
-		JSONObject open = mon_openwallet(param, info);
-		if(open.has("error")) return open;
 		
-		JSONObject sync = mon_checksync(param, info);
-		if(sync.has("status")) return sync;
-		
-		param.put("method", "getbalance");
-		
-		JSONObject result = new JSONObject(monero_request(param, info, "rpc").toString());
-		
-		if(result.has("status")) return result;
-		
-		//setting result data
-		if(!result.has("error")){
-			if(result.getJSONObject("result").has("balance")) {
-				Double balance = result.getJSONObject("result").getDouble("balance");
-				result.getJSONObject("result").put("balance", new Util().toMonero(info.unit_piconero, balance));
-			}
-			if(result.getJSONObject("result").has("unlocked_balance")) {
-				Double unlocked_balance = result.getJSONObject("result").getDouble("unlocked_balance");
-				result.getJSONObject("result").put("unlocked_balance", new Util().toMonero(info.unit_piconero, unlocked_balance));
-			}
-		}
-		
-		return result;
+		return dao.getbalance();
 	}
 	
 	
@@ -114,18 +115,16 @@ public class APIServiceImpl implements APIService{
 	 * 송금
 	 * 
 	 * @param paramMap
-	 * @param info
 	 * @return
 	 */
-	@SuppressWarnings({ "unused" })
-	private JSONObject mon_withdrawalcoin(JSONObject param, Properties info) {
+	private JSONObject mon_withdrawalcoin(JSONObject param) {
 		//이제 payment_id 도 받아야 함
 		//DB 에서 잔액 차감
 		
-		JSONObject open = mon_openwallet(param, info);
+		JSONObject open = mon_openwallet(param);
 		if(open.has("error")) return open;
 		
-		JSONObject sync = mon_checksync(param, info);
+		JSONObject sync = mon_checksync(param);
 		if(sync.has("status")) return sync;
 		
 		//주소와 금액 destination Setting
@@ -157,46 +156,69 @@ public class APIServiceImpl implements APIService{
 		
 		System.out.println("jsonParams : "+jsonParams);
 		
-		return monero_request(jsonParams, info, "rpc");
+		return monero_request(jsonParams, "rpc");
 	}
 	
 	/**
 	 * 송금 내역 확인
 	 * @param param
-	 * @param info
 	 * @return
 	 */
-	@SuppressWarnings("unused")
-	private JSONObject mon_gettransaction(JSONObject param, Properties info) {
+	private JSONObject mon_gettransaction(JSONObject param) {
 		//db 에서 조회
-		JSONObject open = mon_openwallet(param, info);
-		if(open.has("error")) return open;
+
+		return dao.gettransaction();
+	}
+	
+	
+	
+	/*
+	 * 모네로
+	 */
+	
+	/**
+	 * 모네로 코어 wallet rpc api 요청
+	 * 
+	 * @param jsonParams
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public JSONObject monero_request(JSONObject jsonParams, String serverType){
+		JSONObject result = new JSONObject();
 		
-		JSONObject sync = mon_checksync(param, info);
-		if(sync.has("status")) return sync;
+		String url = info.getMonero_url(serverType);
 		
-		//params setting
-		JSONObject dataParams = new JSONObject();
-		dataParams.put("txid", (param.has("txid") ? param.get("txid") : ""));
+		System.out.println(url);
 		
-		JSONObject jsonParams = new JSONObject();
+		HashMap<String, String> headers = new HashMap<>();
+		headers.put("Content-Type", "application/json; charset=UTF-8");
 		
-		jsonParams.put("method", "get_transfer_by_txid");
-		jsonParams.put("params", dataParams);
+		jsonParams.put("jsonrpc", "2.0");
+		if(!jsonParams.has("id")) jsonParams.put("id", "0"); // json rpc response bring this id 
 		
-		JSONObject result = new JSONObject(monero_request(jsonParams, info, "rpc").toString());
+		String params = jsonParams.toString();
+
+		logger.info("params : " + params);
 		
-		//setting result data
-		if(!result.has("error")){
-			if(result.getJSONObject("result").getJSONObject("transfer").has("amount")){
-				double amount = result.getJSONObject("result").getJSONObject("transfer").getDouble("amount");
-				result.getJSONObject("result").getJSONObject("transfer").put("amount",  new Util().toMonero(info.unit_piconero, amount));
+		try{
+			String resultDecode = util.request(url, params, headers);
+			
+			if (!resultDecode.startsWith("error")) {
+				Map<String, String> resultMap;
+		    	resultMap = new ObjectMapper().readValue(resultDecode, HashMap.class);
+		    	result = util.mapToJsonObject(resultMap);
+			}else{
+				result.put("status", "error");
+				result.put("error_message", resultDecode.split("@#")[1]);
 			}
+		}catch(Exception e){
+			e.printStackTrace();
 		}
+		
+		logger.info(result.toString());
 		
 		return result;
 	}
-	
 	
 	/**
 	 * ※ parameter 체크 후 method 명 생성하여 method 실행 [coninname / command 필수]
@@ -246,90 +268,51 @@ public class APIServiceImpl implements APIService{
 			return param;
 		}
 		
-		//excute method
-		Method method = null;
+		logger.info(methodName);
+		
 		Object result = null;
 		
-		try {
-			
-			Class<?> c = Class.forName(this.getClass().getName());
-			Object obj = c.newInstance();
-			
-			method = c.getDeclaredMethod(methodName, JSONObject.class, Properties.class); // (methodname, parameter type1, parameter type2...)
-			method.setAccessible(true);
-			
-			result = method.invoke(obj, param, info); //properties를 보내줘야함.. new instance 라서 생성이 안됨
-			
-		} catch (Exception e){
-			e.printStackTrace();
-			
-			param.put("status", "error");
-			param.put("error_message", e.getMessage());
-			
-			return param;
-		}finally{
-			method.setAccessible(false); // it works after catch statement
-		}
+		if("mon_getnewaccount".equals(methodName)) result = mon_getnewaccount(param);
+		if("mon_getwalletaddress".equals(methodName)) result = mon_getwalletaddress(param);
+		if("mon_getbalance".equals(methodName)) result = mon_getbalance(param);
+		if("mon_withdrawalcoin".equals(methodName)) result = mon_withdrawalcoin(param);
+		if("mon_gettransaction".equals(methodName)) result = mon_gettransaction(param);
+		
+		//excute method
+//		Method method = null;
+//		Object result = null;
+//		
+//		try {
+//			
+//			Class<?> c = Class.forName(this.getClass().getName());
+//			Object obj = c.newInstance();
+//			
+//			method = c.getDeclaredMethod(methodName, JSONObject.class); // (methodname, parameter type1, parameter type2...)
+//			method.setAccessible(true);
+//			
+//			result = method.invoke(obj, param); //properties를 보내줘야함.. new instance 라서 생성이 안됨 >>componenetscan 으로 회생가능
+//			
+//		} catch (Exception e){
+//			e.printStackTrace();
+//			
+//			param.put("status", "error");
+//			param.put("error_message", e.getMessage());
+//			
+//			return param;
+//		}finally{
+//			method.setAccessible(false); // it works after catch statement
+//		}
 		
 		return (JSONObject) result;
-	}
-	
-	/*
-	 * 모네로
-	 */
-	
-	/**
-	 * 모네로 코어 wallet rpc api 요청
-	 * 
-	 * @param jsonParams
-	 * @param info
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	private JSONObject monero_request(JSONObject jsonParams, Properties info, String serverType){
-		Util util = new Util();
-		JSONObject result = new JSONObject();
-		
-		String url = info.getMonero_url(serverType);
-		
-		HashMap<String, String> headers = new HashMap<>();
-		headers.put("Content-Type", "application/json; charset=UTF-8");
-		
-		jsonParams.put("jsonrpc", "2.0");
-		jsonParams.put("id", "0"); // json rpc response bring this id
-		
-		String params = jsonParams.toString();
-
-		logger.info("params : " + params);
-		
-		try{
-			String resultDecode = util.request(url, params, headers);
-			
-			if (!resultDecode.startsWith("error")) {
-				Map<String, String> resultMap;
-		    	resultMap = new ObjectMapper().readValue(resultDecode, HashMap.class);
-		    	result = util.mapToJsonObject(resultMap);
-			}else{
-				result.put("status", "error");
-				result.put("error_message", resultDecode.split("@#")[1]);
-			}
-		}catch(Exception e){
-			e.printStackTrace();
-		}
-		
-		logger.info(result.toString());
-		
-		return result;
 	}
 	
 	/**
 	 * monero open wallet
 	 * API 사용전 wallet을 open 해야한다
 	 * @param param
-	 * @param info
 	 * @return
 	 */
-	private JSONObject mon_openwallet(JSONObject param, Properties info){
+	private JSONObject mon_openwallet(JSONObject param){
 		
 		JSONObject jsonParams = new JSONObject();
 		JSONObject data = new JSONObject();
@@ -340,22 +323,21 @@ public class APIServiceImpl implements APIService{
 		jsonParams.put("method", "open_wallet");
 		jsonParams.put("params", data);
 		
-		return monero_request(jsonParams, info, "rpc");
+		return monero_request(jsonParams, "rpc");
 		
 	}
 	
 	/**
 	 * 접속한 rpc 서버의 block height 정보 정보 가져오기 실패시 -1 돌려줌
 	 * @param param
-	 * @param info
 	 * @return
 	 */
-	private Integer mon_getheight(JSONObject param, Properties info){
+	private Integer mon_getheight(JSONObject param){
 		
 		int returnValue = -1;
 		
 		try{
-			JSONObject result = new JSONObject(monero_request(new JSONObject().put("method", "getheight"), info, "rpc").toString());
+			JSONObject result = new JSONObject(monero_request(new JSONObject().put("method", "getheight"), "rpc").toString());
 			
 			if(!result.has("error") && result.has("result")){
 				if(result.getJSONObject("result").has("height")){
@@ -370,11 +352,11 @@ public class APIServiceImpl implements APIService{
 		return returnValue;
 	}
 	
-	private Integer mon_getblockcount(JSONObject param, Properties info){
+	public Integer mon_getblockcount(JSONObject param){
 		int returnValue = -1;
 		
 		try{
-			JSONObject result = new JSONObject(monero_request(new JSONObject().put("method", "getblockcount"), info, "daemon").toString());
+			JSONObject result = new JSONObject(monero_request(new JSONObject().put("method", "getblockcount"), "daemon").toString());
 			
 			if((!result.has("error")) && result.has("result")){
 				if(result.getJSONObject("result").has("count")){
@@ -389,7 +371,7 @@ public class APIServiceImpl implements APIService{
 		return returnValue;
 	}	
 	
-	private JSONObject mon_checksync(JSONObject param, Properties info) {
+	private JSONObject mon_checksync(JSONObject param) {
 		boolean bool = false;
 		int time = 0;
 		
@@ -397,8 +379,8 @@ public class APIServiceImpl implements APIService{
 		
 		try{
 			while(bool == false){
-				int rpcHeight = mon_getheight(param, info);
-				int daemonHeight = mon_getblockcount(param, info);
+				int rpcHeight = mon_getheight(param);
+				int daemonHeight = mon_getblockcount(param);
 				
 				if(rpcHeight == daemonHeight){
 					bool = true;

@@ -21,6 +21,14 @@
 	<resources mapping="/resources/**" location="/resources/" />
 	<resources mapping="/js/**" location= "/WEB-INF/js/"/>
 
+	<!-- Service -->
+	<beans:bean id="service" class="com.banco.monero.service.APIServiceImpl"/>
+	<beans:bean id="util" class="com.banco.monero.util.Util"/>
+	<beans:bean id="info" class="com.banco.monero.util.Info"/>
+	<beans:bean id="dao" class="com.banco.monero.dao.JobRepository"/>
+	
+	<util:properties id="properties" location="/resources/config/properties.xml"></util:properties>
+	
 	<!-- Bean View Resolver -->
 	<beans:bean class="org.springframework.web.servlet.view.BeanNameViewResolver">
 		<beans:property name="order" value="0" />
@@ -44,13 +52,6 @@
 	<beans:bean name="jsonView" class="net.sf.json.spring.web.servlet.view.JsonView" />
 	<context:component-scan base-package="com.banco.monero" />
 	
-	<util:properties id="properties" location="/resources/config/properties.xml"></util:properties>
-	
-	<!-- Service -->
-	<beans:bean id="apiService" class="com.banco.monero.service.APIServiceImpl"/>
-	<beans:bean id="Properties" class="com.banco.monero.properties.Properties"/>
-	<beans:bean id="Util" class="com.banco.monero.util.Util"/>
-	
 	<beans:bean id="task" class="com.banco.monero.job.MoneroTask"/>
 	
 	<beans:bean name="moneroJob" class="org.springframework.scheduling.quartz.JobDetailBean" p:jobClass="com.banco.monero.job.JobDetailBean">
@@ -64,7 +65,7 @@
     <beans:bean id="cronTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean"
           p:jobDetail-ref="moneroJob"
           p:startDelay="1000"
-          p:cronExpression="0/3 * * * * ?"/>
+          p:cronExpression="0/50 * * * * ?"/>
  
     <beans:bean id="schedulerFactoryBean" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
         <beans:property name="triggers">
@@ -73,5 +74,5 @@
             </beans:list>
         </beans:property>
     </beans:bean>
-	
+    
 </beans:beans>

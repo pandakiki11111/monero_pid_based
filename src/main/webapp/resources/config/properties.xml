@@ -17,6 +17,10 @@
             </spring:eval>
      -->
      
+    <!-- URL / PORT -->
+    <entry key="ethereum.ip">http://119.207.78.154</entry>
+    <entry key="ethereum.port">8545</entry>
+    
      <!-- 
 	    P2P: 18080 for the mainnet, 28080 for the testnet
 		RPC: 18081 for the mainnet, 28081 for the testnet
@@ -26,4 +30,6 @@
     
     <entry key="monero.daemon.ip">http://119.207.78.154</entry>
     <entry key="monero.daemon.port">18081</entry>
+
+	<entry key="coinnames">MON:ETC</entry>
 </properties>

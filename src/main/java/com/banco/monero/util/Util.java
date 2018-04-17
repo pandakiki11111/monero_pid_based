@@ -16,18 +16,19 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
-import com.banco.monero.properties.Properties;
+import com.banco.monero.util.Info;
 
+@Component
 public class Util {
 	
-	private static final Logger logger = LoggerFactory.getLogger(Util.class);
+//	private static final Logger logger = LoggerFactory.getLogger(Util.class);
 	
 	public String request(String string_url, String params,  HashMap<String, String> headers){
 		
 		 String response = "";
+		 
 		 HttpURLConnection http = null;
 		 InputStream in = null;
 		
@@ -129,7 +130,7 @@ public class Util {
 	 */
 	public String toMonero(int decimal, double amount){
 
-		Map<String, Integer> map = new Properties().getNeros();
+		Map<String, Integer> map = new Info().getNeros();
 		
 		System.out.println("d : "+ decimal+"/"+amount);
 		
@@ -153,7 +154,7 @@ public class Util {
 	 * @return
 	 */
 	public String toUnit(int decimal, double amount){
-		Map<String, Integer> map = new Properties().getNeros();
+		Map<String, Integer> map = new Info().getNeros();
 		
 		System.out.println("d : "+ decimal+"/"+amount);
 		
@@ -171,7 +172,7 @@ public class Util {
 		return result;
 	}
 	
-	public JSONObject coinNameCheck(JSONObject param, Properties info){
+	public JSONObject coinNameCheck(JSONObject param, Info info){
 		
 		JSONObject result = new JSONObject();
 		
