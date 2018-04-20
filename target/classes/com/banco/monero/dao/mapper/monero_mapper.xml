@@ -43,4 +43,15 @@
     	values
     	(#{account},#{password},0)
     </insert>
+    
+    <select id="getbalance" parameterType="java.lang.String" resultType="Integer">
+    	select top 1 balance from usertable where account = #{value}
+    </select>
+    
+    <select id="gettransaction" parameterType="java.util.Map" resultType="java.util.Map">
+    	select top 50 * from transfers2 where payment_id = #{account}
+    	<if test="txid!=null">
+    		and txid=#{txid}
+    	</if>
+    </select>
 </mapper>

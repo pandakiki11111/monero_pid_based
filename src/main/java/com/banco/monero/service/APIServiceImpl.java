@@ -1,7 +1,9 @@
 package com.banco.monero.service;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.codehaus.jackson.map.ObjectMapper;
@@ -105,9 +107,18 @@ public class APIServiceImpl implements APIService{
 	 * @throws InterruptedException 
 	 */
 	private JSONObject mon_getbalance(JSONObject param){
-		//DB 조회로 변경
+		JSONObject result = new JSONObject();
 		
-		return dao.getbalance();
+		if(!param.has("account")){
+			result.put("status", "error");
+			result.put("error_message", "account required");
+			
+			return result;
+		}
+		
+		result = dao.getbalance(param.getString("account"));
+		
+		return result;
 	}
 	
 	
@@ -118,45 +129,45 @@ public class APIServiceImpl implements APIService{
 	 * @return
 	 */
 	private JSONObject mon_withdrawalcoin(JSONObject param) {
-		//이제 payment_id 도 받아야 함
-		//DB 에서 잔액 차감
 		
-		JSONObject open = mon_openwallet(param);
-		if(open.has("error")) return open;
-		
-		JSONObject sync = mon_checksync(param);
-		if(sync.has("status")) return sync;
-		
-		//주소와 금액 destination Setting
-		JSONArray destinations = new JSONArray();
-		
-		JSONObject params = new JSONObject(param.toString());
-		JSONArray dataArray =  new JSONArray(params.get("data").toString());
-		
-		for(int i = 0; i < dataArray.length(); i++){
-			JSONObject destination = new JSONObject();
+		if(!param.has("account")){
 			
-			destination.put("amount", dataArray.getJSONObject(i).getDouble("amount"));
-			destination.put("address", dataArray.getJSONObject(i).getString("toaddress"));
-			
-			destinations.put(destination);
 		}
 		
-		//params setting
-		JSONObject dataParams = new JSONObject();
+		if(!param.has("data")){
+			
+		}
 		
-		dataParams.put("mixin", 4); // total 5 signatures (checkout monero ring signature)
-		dataParams.put("get_tx_key", true); //Return the transaction key after sending
-		dataParams.put("destinations", destinations);
+		if(!param.has("data")){
+			
+		}
 		
-		JSONObject jsonParams = new JSONObject();
+		JSONArray destination = new JSONArray();
+		destination = param.getJSONArray("data");
 		
-		jsonParams.put("method", "transfer");
-		jsonParams.put("params", dataParams);
+		List<Map<String, Object>> list = new ArrayList<>();
+		List<Map<String, Object>> failed = new ArrayList<>();
 		
-		System.out.println("jsonParams : "+jsonParams);
+		for(int i = 0; i < destination.length(); i++){
+			if(!destination.getJSONObject(i).has("amount")){
+				failed.add(destination.getJSONObject(i).toMap());
+				continue;
+			}
+			if(!destination.getJSONObject(i).has("toaddress")){
+				failed.add(destination.getJSONObject(i).toMap());
+				continue;
+			}
+			list.add(destination.getJSONObject(i).toMap());
+		}
 		
-		return monero_request(jsonParams, "rpc");
+		int count = dao.insertTransfer(list);
+		
+		JSONObject result = new JSONObject();
+		
+		result.put("success", count);
+//		result.put("failed", value)
+		return result; //여기까지 하다맘
+		
 	}
 	
 	/**
@@ -165,11 +176,28 @@ public class APIServiceImpl implements APIService{
 	 * @return
 	 */
 	private JSONObject mon_gettransaction(JSONObject param) {
-		//db 에서 조회
-
-		return dao.gettransaction();
+		
+		JSONObject result = new JSONObject();
+		
+		if(!param.has("account")){
+			result.put("status", "error");
+			result.put("error_message", "account required");
+			
+			return result;
+		}
+		
+		Map<String, String> paramMap = new HashMap<>();
+		paramMap.put("account", param.getString("account"));
+		
+		if(param.has("txid")) paramMap.put("txid", param.getString("txid"));
+		
+		List<Map<String, Object>> list = dao.gettransaction(paramMap); 
+		
+		result.put("list", list.toArray());
+		result.put("count", list.size());
+		
+		return result;
 	}
-	
 	
 	
 	/*
